@@ -438,12 +438,11 @@
       <h1>ARKit &amp; <span>RealityKit</span><br />with LiDAR</h1>
       <div class="hero-nav">
         <a href="#s-setup">Setup</a><a href="#s-types">Core Types</a
-        ><a href="#s-worldanchor">World Anchor</a
-        ><a href="#s-depth">Depth Buffers</a><a href="#s-usdz">Models</a
-        ><a href="#s-gestures">Gestures</a><a href="#s-coords">Coordinates</a
-        ><a href="#s-spawn">Spawning</a><a href="#s-kinematic">Kinematic</a
-        ><a href="#s-joystick">Joystick</a><a href="#s-drag">Dragging</a
-        ><a href="#s-anchors">Anchors</a><a href="#s-raycasting">Raycasting</a
+        ><a href="#s-anchors">Anchors</a><a href="#s-depth">Depth Buffers</a
+        ><a href="#s-usdz">Models</a><a href="#s-gestures">Gestures</a
+        ><a href="#s-coords">Coordinates</a><a href="#s-spawn">Spawning</a
+        ><a href="#s-kinematic">Kinematic</a><a href="#s-joystick">Joystick</a
+        ><a href="#s-drag">Dragging</a><a href="#s-raycasting">Raycasting</a
         ><a href="#s-hits">Hit Testing</a
         ><a href="#s-interactions">Interactions</a
         ><a href="#s-delegate">Delegate</a
@@ -540,7 +539,7 @@
             device.
           </p>
         </div>
-        <div class="expl" data-hl="16-18">
+        <div class="expl" data-hl="16-17">
           <div class="expl-label">Launch</div>
           <h3>Start the AR session &amp; assign delegate</h3>
           <p>
@@ -550,7 +549,7 @@
             callbacks. Without this line, none of the delegate methods fire.
           </p>
         </div>
-        <div class="expl" data-hl="20-29">
+        <div class="expl" data-hl="28-37">
           <div class="expl-label">Delegate</div>
           <h3>Setting up ARView &amp; Delegate</h3>
           <p>
@@ -570,6 +569,37 @@
               class="tag"
               >didUpdate frame</span
             >, <span class="tag">didAdd anchors</span>, etc.) will fire.
+          </div>
+        </div>
+        <div class="expl" data-hl="19-24">
+          <div class="expl-label">Coaching Overlay</div>
+          <h3>"Move your phone around"</h3>
+          <p>
+            <span class="tag">ARCoachingOverlayView</span> is Apple's built-in
+            tutorial view that tells users to move their phone around so ARKit
+            can detect surfaces. It shows animated instructions and
+            automatically hides once enough of the environment is mapped.
+          </p>
+          <p>
+            Set <span class="tag">goal</span> to
+            <span class="tag">.horizontalPlane</span> (floor/table) or
+            <span class="tag">.anyPlane</span>. The overlay will display until
+            ARKit has confidently detected a matching surface. For ground-plane
+            apps, <span class="tag">.horizontalPlane</span> is the right choice.
+          </p>
+          <p>
+            Call <span class="tag">activatesAutomatically = true</span> so it
+            re-appears if tracking is lost. Add it as a subview of your
+            <span class="tag">ARView</span> and set
+            <span class="tag">session</span> so it knows which AR session to
+            monitor.
+          </p>
+          <div class="note">
+            The coaching overlay also fires
+            <span class="tag">ARCoachingOverlayViewDelegate</span> callbacks
+            like <span class="tag">coachingOverlayViewDidDeactivate</span>
+            &mdash; useful for starting your game or placing initial content
+            only after the user has successfully scanned the room.
           </div>
         </div>
       </div>
@@ -672,85 +702,142 @@
       </div>
     </div>
 
-    <!-- ====== 02 WORLD ANCHOR ====== -->
-    <div class="section" data-section="worldanchor">
+    <!-- ====== 02 ANCHORS (unified) ====== -->
+    <div class="section" data-section="anchors">
       <div class="explain-panel">
-        <div class="divider" id="s-worldanchor">
-          <div class="num">02 — WORLD ANCHOR</div>
+        <div class="divider" id="s-anchors">
+          <div class="num">02 — ANCHORS</div>
           <h2>AnchorEntity &amp; the Scene Graph</h2>
           <p>
-            Every virtual object needs an anchor to exist in the AR scene.
-            Here’s how anchors work and where they come from.
+            Every virtual object needs an anchor to exist in the AR scene. Here
+            are all the ways to create one.
           </p>
         </div>
-        <div class="expl" data-hl="1-5">
-          <div class="expl-label">Delegate</div>
-          <h3>Anchors arrive via the delegate</h3>
+        <div class="expl" data-hl="1-10">
+          <div class="expl-label">Ground Plane via Delegate</div>
+          <h3>Getting a ground plane in the Coordinator</h3>
           <p>
-            When ARKit detects a surface, it calls
-            <span class="tag">session(_:didAdd:)</span> with an array of
-            <span class="tag">ARAnchor</span> objects. Cast to
-            <span class="tag">ARPlaneAnchor</span> to access detected planes
-            &mdash; horizontal tables, floors, or vertical walls.
+            The most common need is detecting the floor. In your
+            <span class="tag">Coordinator</span> (which conforms to
+            <span class="tag">ARSessionDelegate</span>), implement
+            <span class="tag">session(_:didAdd:)</span>. ARKit calls it
+            automatically as the user moves the phone and surfaces are detected.
+            Cast each anchor to <span class="tag">ARPlaneAnchor</span> and check
+            <span class="tag">.classification == .floor</span> to find the
+            ground plane.
+          </p>
+          <p>
+            Wrap it in <span class="tag">AnchorEntity(anchor:)</span> to create
+            a RealityKit anchor that stays synced as ARKit refines the plane.
+            Build a <span class="tag">ModelEntity</span>, add it as a child, and
+            call <span class="tag">scene.addAnchor()</span>.
           </p>
           <div class="note">
-            The delegate fires automatically as the user moves the phone. You
-            don&rsquo;t request planes &mdash; ARKit pushes them to you.
+            The delegate fires automatically &mdash; you don’t request planes.
+            ARKit pushes them to you as the user scans. The
+            <span class="tag">ARCoachingOverlayView</span> (see Setup section)
+            tells the user to move the phone around until a surface is found.
           </div>
         </div>
-        <div class="expl" data-hl="7-8">
-          <div class="expl-label">AnchorEntity</div>
-          <h3>Wrap the AR anchor for RealityKit</h3>
+        <div class="expl" data-hl="12-18">
+          <div class="expl-label">Convenience Planes</div>
+          <h3>Auto-place on detected surfaces</h3>
           <p>
-            <span class="tag">AnchorEntity(anchor:)</span> creates a RealityKit
-            anchor tied to the detected <span class="tag">ARPlaneAnchor</span>.
-            It stays synced as ARKit refines the plane position.
-          </p>
-        </div>
-        <div class="expl" data-hl="10-15">
-          <div class="expl-label">Build &amp; Add</div>
-          <h3>Create a box and attach it</h3>
-          <p>
-            <span class="tag">MeshResource.generateBox(size: 0.1)</span>
-            creates a 10 cm cube.
-            <span class="tag">SimpleMaterial</span> gives it color. Wrap both in
-            a <span class="tag">ModelEntity</span>, add it as a child of the
-            anchor, and call <span class="tag">scene.addAnchor()</span>.
+            Instead of writing delegate code, you can use
+            <span class="tag">AnchorEntity(plane: .horizontal)</span>.
+            RealityKit listens for plane-detection results from ARKit behind the
+            scenes and automatically places the anchor on the first matching
+            surface.
           </p>
           <p>
-            <strong>Where does it appear?</strong> The box is added as a child
-            of the plane anchor, so its position is
-            <em>relative to the anchor&rsquo;s origin</em>. Since we don&rsquo;t
-            set a position on the box, it defaults to
-            <span class="tag">(0, 0, 0)</span> in the anchor&rsquo;s local space
-            &mdash; which is the <strong>center of the detected plane</strong>.
-            The box&rsquo;s center sits right on the surface, meaning half of it
-            (5 cm) pokes above and half is buried below the plane.
+            <span class="tag">.horizontal</span> matches floors &amp; tables.
+            <span class="tag">.vertical</span> matches walls. Adding
+            <span class="tag">classification:</span> narrows it further &mdash;
+            <span class="tag">.floor</span> ignores tables,
+            <span class="tag">.table</span> ignores floors. LiDAR makes
+            classification fast and accurate.
           </p>
           <div class="note">
-            To sit the box <em>on top</em> of the surface, shift it up by half
-            its height: <span class="tag">box.position.y = 0.05</span>. Then the
-            bottom face rests exactly on the detected plane.
+            This is a convenience shortcut. Under the hood, it does the same
+            thing as the delegate approach above &mdash; waiting for ARKit to
+            detect an
+            <span class="tag">ARPlaneAnchor</span> and attaching to it &mdash;
+            but RealityKit handles the wiring for you.
           </div>
         </div>
-        <div class="expl" data-hl="18-22">
-          <div class="expl-label">Manual</div>
-          <h3>Create anchors manually</h3>
+        <div class="expl" data-hl="20-21">
+          <div class="expl-label">World</div>
+          <h3>Fixed point in 3D space</h3>
           <p>
-            You can also create
-            <span class="tag">AnchorEntity(world:)</span> at any fixed position
-            without waiting for detection. Pass a
+            <span class="tag">AnchorEntity(world:)</span> locks to absolute
+            coordinates without waiting for detection. Pass a
             <span class="tag">simd_float3</span> in meters from the session
-            origin.
+            origin. Stays put as you move.
           </p>
+        </div>
+        <div class="expl" data-hl="23-24">
+          <div class="expl-label">Raycast</div>
+          <h3>Place where the user tapped</h3>
+          <p>
+            <span class="tag">AnchorEntity(raycastResult:)</span> creates an
+            anchor at the exact 3D hit point with proper surface orientation.
+          </p>
+        </div>
+        <div class="expl" data-hl="26-31">
+          <div class="expl-label">Tracking</div>
+          <h3>Camera &amp; image</h3>
+          <p>
+            <strong><span class="tag">.camera</span></strong> &mdash; the anchor
+            follows the device. Content stays pinned in front of (or relative
+            to) the phone as the user moves.
+          </p>
+          <p>
+            <strong><span class="tag">.image</span></strong> &mdash; RealityKit
+            scans the camera feed for a reference image you provide. You supply
+            a <span class="tag">group</span> (the name of an AR Resource Group
+            in your Xcode asset catalog) and a
+            <span class="tag">name</span> (the specific image within it). When
+            ARKit recognizes that image in the real world, it anchors your 3D
+            content on top of it.
+          </p>
+          <div class="note">
+            For <span class="tag">.image</span>, add an &ldquo;AR Resource
+            Group&rdquo; in Xcode’s asset catalog and set the physical size of
+            each image so ARKit knows how big it is.
+          </div>
+        </div>
+        <div class="expl" data-hl="33-46">
+          <div class="expl-label">Body</div>
+          <h3>Attach content to a tracked person</h3>
+          <p>
+            <span class="tag">AnchorEntity(.body)</span> waits for ARKit’s
+            body-tracking system to detect a person, then anchors content to
+            their skeleton. Requires an
+            <span class="tag">ARBodyTrackingConfiguration</span> instead of
+            world tracking.
+          </p>
+          <p>
+            The underlying <span class="tag">ARBodyAnchor</span> gives you a
+            full <span class="tag">ARSkeleton3D</span> with named joints &mdash;
+            <span class="tag">.head</span>, <span class="tag">.leftHand</span>,
+            <span class="tag">.rightFoot</span>, etc. Look up a joint index with
+            <span class="tag">ARSkeletonDefinition.defaultBody3D</span>, read
+            its local transform, and multiply by the body anchor’s world
+            transform for the joint’s world position.
+          </p>
+          <div class="note">
+            Body tracking requires an A12+ chip and works best with the full
+            body visible. It tracks one person at a time. The 3D skeleton has
+            ~90 joints including fingers.
+          </div>
         </div>
       </div>
       <div class="code-panel">
         <div class="code-bar">
           <div class="dots"><span></span><span></span><span></span></div>
-          <div class="code-fname">WorldAnchor.swift</div>
+          <div class="code-fname">Anchors.swift</div>
         </div>
-        <div class="code-scroll" id="code-worldanchor"></div>
+        <div class="code-scroll" id="code-anchors"></div>
       </div>
     </div>
 
@@ -1294,6 +1381,51 @@
             any 3D world point into a 2D screen coordinate.
           </p>
         </div>
+        <div class="expl" data-hl="19-20">
+          <div class="expl-label">The Matrix</div>
+          <h3>Inside the projection matrix</h3>
+          <p>
+            The <span class="tag">projectionMatrix</span> is a 4&times;4 matrix
+            that encodes how the camera lens distorts 3D space onto a flat
+            image. Its structure looks like this:
+          </p>
+          <div
+            class="note"
+            style="
+              font-family: 'JetBrains Mono', monospace;
+              font-size: 0.85rem;
+              line-height: 1.9;
+              white-space: pre;
+              overflow-x: auto;
+            "
+          >
+            &#x250C; &#x2510; &#x2502; fx 0 0 0 &#x2502; &#x2502; 0 fy 0 0
+            &#x2502; &#x2502; 0 0 A B &#x2502; &#x2502; 0 0 &ndash;1 0 &#x2502;
+            &#x2514; &#x2518;
+          </div>
+          <p>
+            <span class="tag">fx</span>, <span class="tag">fy</span> &mdash;
+            scale X and Y based on the field of view. A narrower FOV means
+            larger values (more &ldquo;zoom&rdquo;).
+          </p>
+          <p>
+            <span class="tag">A</span>, <span class="tag">B</span> &mdash;
+            encode the near and far clipping planes. They remap depth into the
+            &ndash;1&hellip;+1 range so the GPU knows what&rsquo;s visible.
+          </p>
+          <p>
+            <span class="tag">&ndash;1</span> in row 4 &mdash; this is the
+            perspective trick. It copies the Z depth into the
+            <span class="tag">w</span> component, so when you divide by
+            <span class="tag">w</span> later, far-away objects shrink.
+          </p>
+          <div class="note">
+            <strong>In short:</strong> multiplying a 3D point by this matrix
+            gives a 4D &ldquo;clip&rdquo; vector. Dividing by its
+            <span class="tag">w</span> collapses it to 2D &mdash; that&rsquo;s
+            perspective projection in one multiply + one divide.
+          </div>
+        </div>
         <div class="expl" data-hl="19-25">
           <div class="expl-label">Projection</div>
           <h3>Project a 3D point onto screen</h3>
@@ -1603,124 +1735,6 @@
           <div class="code-fname">DragEntity.swift</div>
         </div>
         <div class="code-scroll" id="code-dragging"></div>
-      </div>
-    </div>
-
-    <!-- ====== 09 ANCHORS ====== -->
-    <div class="section" data-section="anchors">
-      <div class="explain-panel">
-        <div class="divider" id="s-anchors">
-          <div class="num">10 — ANCHORS</div>
-          <h2>Anchor Types</h2>
-          <p>Pin virtual content to surfaces, positions, or the camera.</p>
-        </div>
-        <div class="expl" data-hl="1-2">
-          <div class="expl-label">World</div>
-          <h3>Fixed point in 3D space</h3>
-          <p>Locks to absolute coordinates. Stays put as you move.</p>
-        </div>
-        <div class="expl" data-hl="4-8">
-          <div class="expl-label">Planes</div>
-          <h3>Auto-place on detected surfaces</h3>
-          <p>
-            When you write
-            <span class="tag">AnchorEntity(plane: .horizontal)</span>,
-            you&rsquo;re telling RealityKit: &ldquo;find me a detected
-            <span class="tag">ARPlaneAnchor</span> that matches, and attach
-            here.&rdquo; RealityKit listens for plane-detection results from
-            ARKit behind the scenes and automatically places the anchor on the
-            first matching surface it finds.
-          </p>
-          <p>
-            <span class="tag">.horizontal</span> matches floors &amp; tables.
-            <span class="tag">.vertical</span> matches walls. Adding
-            <span class="tag">classification:</span> narrows it further &mdash;
-            <span class="tag">.floor</span> ignores tables,
-            <span class="tag">.table</span> ignores floors. LiDAR makes
-            classification fast and accurate.
-          </p>
-          <div class="note">
-            This is a convenience shortcut. Under the hood, it does the same
-            thing as the delegate approach in section 02 &mdash; waiting for
-            ARKit to detect an
-            <span class="tag">ARPlaneAnchor</span> and attaching to it &mdash;
-            but RealityKit handles the wiring for you.
-          </div>
-        </div>
-        <div class="expl" data-hl="10-11">
-          <div class="expl-label">Raycast</div>
-          <h3>Place where the user tapped</h3>
-          <p>
-            Creates an anchor at the exact 3D hit point with proper surface
-            orientation.
-          </p>
-        </div>
-        <div class="expl" data-hl="13-18">
-          <div class="expl-label">Tracking</div>
-          <h3>Camera &amp; image</h3>
-          <p>
-            <strong><span class="tag">.camera</span></strong> &mdash; the anchor
-            follows the device. Content stays pinned in front of (or relative
-            to) the phone as the user moves.
-          </p>
-          <p>
-            <strong><span class="tag">.image</span></strong> &mdash; RealityKit
-            scans the camera feed for a reference image you provide. You supply
-            a <span class="tag">group</span> (the name of an AR Resource Group
-            in your Xcode asset catalog) and a
-            <span class="tag">name</span> (the specific image within it). When
-            ARKit recognizes that image in the real world &mdash; a movie
-            poster, a book cover, a product logo &mdash; it creates an anchor
-            exactly where the image is, matching its position and orientation.
-            Your 3D content then appears on top of the physical image.
-          </p>
-          <div class="note">
-            For <span class="tag">.image</span>, you need to add a &ldquo;AR
-            Resource Group&rdquo; in Xcode&rsquo;s asset catalog and drag in
-            your reference images. Set the physical size of each image so ARKit
-            knows how big it is in the real world.
-          </div>
-        </div>
-        <div class="expl" data-hl="21-34">
-          <div class="expl-label">Body</div>
-          <h3>Attach content to a tracked person</h3>
-          <p>
-            <span class="tag">AnchorEntity(.body)</span> tells RealityKit to
-            wait for ARKit&rsquo;s body-tracking system to detect a person, then
-            anchors content to their skeleton. Requires an
-            <span class="tag">ARBodyTrackingConfiguration</span> instead of
-            world tracking.
-          </p>
-          <p>
-            The underlying <span class="tag">ARBodyAnchor</span> gives you a
-            full <span class="tag">ARSkeleton3D</span> with named joints &mdash;
-            <span class="tag">.head</span>, <span class="tag">.leftHand</span>,
-            <span class="tag">.rightFoot</span>, etc. Each joint has a
-            <span class="tag">simd_float4x4</span> transform relative to the
-            skeleton&rsquo;s hip (root joint).
-          </p>
-          <p>
-            To attach an object to a specific joint, look up the joint index
-            with
-            <span class="tag">ARSkeletonDefinition.defaultBody3D</span>, then
-            read its local transform from
-            <span class="tag">skeleton.jointLocalTransforms</span>. Multiply by
-            the body anchor&rsquo;s world transform to get the joint&rsquo;s
-            world position.
-          </p>
-          <div class="note">
-            Body tracking requires an A12+ chip and works best with the full
-            body visible. It tracks one person at a time. The 3D skeleton has
-            ~90 joints including fingers.
-          </div>
-        </div>
-      </div>
-      <div class="code-panel">
-        <div class="code-bar">
-          <div class="dots"><span></span><span></span><span></span></div>
-          <div class="code-fname">Anchors.swift</div>
-        </div>
-        <div class="code-scroll" id="code-anchors"></div>
       </div>
     </div>
 
@@ -2807,6 +2821,35 @@
             t(' = context.'),
             pr('coordinator'),
           ],
+          [],
+          [t('        '), cm('// Coaching overlay — "move your phone around"')],
+          [
+            t('        '),
+            k('let'),
+            t(' coaching = '),
+            tp('ARCoachingOverlayView'),
+            t('()'),
+          ],
+          [
+            t('        coaching.'),
+            pr('session'),
+            t(' = arView.'),
+            pr('session'),
+          ],
+          [
+            t('        coaching.'),
+            pr('goal'),
+            t(' = .'),
+            en('horizontalPlane'),
+          ],
+          [
+            t('        coaching.'),
+            pr('activatesAutomatically'),
+            t(' = '),
+            k('true'),
+          ],
+          [t('        arView.'), fn('addSubview'), t('(coaching)')],
+          [],
           [t('        '), k('return'), t(' arView')],
           [t('    }')],
           [],
@@ -3160,8 +3203,8 @@
             cm('// PhysicsBodyComponent?'),
           ],
         ],
-        worldanchor: [
-          [cm('// Delegate receives anchors as ARKit detects surfaces')],
+        anchors: [
+          [cm('// 1. Ground plane via delegate (Coordinator)')],
           [
             k('func'),
             t(' '),
@@ -3184,10 +3227,15 @@
             k('as'),
             t('? '),
             tp('ARPlaneAnchor'),
+            t(','),
+          ],
+          [
+            t('              plane.'),
+            pr('classification'),
+            t(' == .'),
+            en('floor'),
           ],
           [t('        '), k('else'), t(' { '), k('continue'), t(' }')],
-          [],
-          [t('        '), cm('// Create an AnchorEntity from the AR anchor')],
           [
             t('        '),
             k('let'),
@@ -3197,56 +3245,57 @@
             pm('anchor'),
             t(': plane)'),
           ],
-          [],
-          [t('        '), cm('// Build a box and attach to the anchor')],
-          [
-            t('        '),
-            k('let'),
-            t(' mesh = '),
-            tp('MeshResource'),
-            t('.'),
-            fn('generateBox'),
-            t('('),
-            pm('size'),
-            t(': '),
-            nm('0.1'),
-            t(')'),
-          ],
-          [
-            t('        '),
-            k('let'),
-            t(' mat = '),
-            tp('SimpleMaterial'),
-            t('('),
-            pm('color'),
-            t(': .'),
-            en('blue'),
-            t(', '),
-            pm('isMetallic'),
-            t(': '),
-            k('false'),
-            t(')'),
-          ],
-          [
-            t('        '),
-            k('let'),
-            t(' box = '),
-            tp('ModelEntity'),
-            t('('),
-            pm('mesh'),
-            t(': mesh, '),
-            pm('materials'),
-            t(': [mat])'),
-          ],
-          [t('        entity.'), fn('addChild'), t('(box)')],
+          [t('        '), cm('// add child models to entity...')],
           [t('        arView.scene.'), fn('addAnchor'), t('(entity)')],
           [t('    }')],
           [t('}')],
           [],
-          [cm('// You can also create anchors manually')],
-          [k('let'), t(' worldAnchor = '), tp('AnchorEntity'), t('(')],
+          [cm('// 2. Convenience — auto-places on detected surfaces')],
           [
-            t('    '),
+            tp('AnchorEntity'),
+            t('('),
+            pm('plane'),
+            t(': .'),
+            en('horizontal'),
+            t(')'),
+          ],
+          [
+            tp('AnchorEntity'),
+            t('('),
+            pm('plane'),
+            t(': .'),
+            en('horizontal'),
+            t(', '),
+            pm('classification'),
+            t(': .'),
+            en('floor'),
+            t(')'),
+          ],
+          [
+            tp('AnchorEntity'),
+            t('('),
+            pm('plane'),
+            t(': .'),
+            en('horizontal'),
+            t(', '),
+            pm('classification'),
+            t(': .'),
+            en('table'),
+            t(')'),
+          ],
+          [
+            tp('AnchorEntity'),
+            t('('),
+            pm('plane'),
+            t(': .'),
+            en('vertical'),
+            t(')'),
+          ],
+          [],
+          [cm('// 3. World position — fixed in 3D space')],
+          [
+            tp('AnchorEntity'),
+            t('('),
             pm('world'),
             t(': '),
             tp('simd_float3'),
@@ -3256,11 +3305,111 @@
             nm('0'),
             t(', -'),
             nm('1'),
-            t(') '),
-            cm('// 1m in front of origin'),
+            t('))'),
           ],
-          [t(')')],
-          [t('arView.scene.'), fn('addAnchor'), t('(worldAnchor)')],
+          [],
+          [cm('// 4. From a raycast result')],
+          [tp('AnchorEntity'), t('('), pm('raycastResult'), t(': result)')],
+          [],
+          [cm('// 5. Camera-relative (follows device)')],
+          [tp('AnchorEntity'), t('(.'), en('camera'), t(')')],
+          [],
+          [cm('// 6. Image tracking')],
+          [tp('AnchorEntity'), t('(.'), en('image'), t('(')],
+          [
+            t('    '),
+            pm('group'),
+            t(': '),
+            st('"AR Resources"'),
+            t(', '),
+            pm('name'),
+            t(': '),
+            st('"poster"'),
+            t('))'),
+          ],
+          [],
+          [cm('// 7. Body tracking')],
+          [tp('AnchorEntity'), t('(.'), en('body'), t(')')],
+          [],
+          [cm('// Requires ARBodyTrackingConfiguration')],
+          [
+            k('let'),
+            t(' bodyConfig = '),
+            tp('ARBodyTrackingConfiguration'),
+            t('()'),
+          ],
+          [t('bodyConfig.'), pr('planeDetection'), t(' = .'), en('horizontal')],
+          [t('arView.'), pr('session'), t('.'), fn('run'), t('(bodyConfig)')],
+          [],
+          [cm('// Access skeleton joints from ARBodyAnchor')],
+          [
+            k('func'),
+            t(' '),
+            fn('session'),
+            t('('),
+            k('_'),
+            t(' s: '),
+            tp('ARSession'),
+            t(', '),
+            pm('didUpdate'),
+            t(' anchors: ['),
+            tp('ARAnchor'),
+            t(']) {'),
+          ],
+          [
+            t('    '),
+            k('guard let'),
+            t(' body = anchors.'),
+            pr('first'),
+            t(' '),
+            k('as'),
+            t('? '),
+            tp('ARBodyAnchor'),
+          ],
+          [t('    '), k('else'), t(' { '), k('return'), t(' }')],
+          [
+            t('    '),
+            k('let'),
+            t(' skeleton = body.'),
+            pr('skeleton'),
+            t(' '),
+            cm('// ARSkeleton3D'),
+          ],
+          [
+            t('    '),
+            k('let'),
+            t(' def = '),
+            tp('ARSkeletonDefinition'),
+            t('.'),
+            pr('defaultBody3D'),
+          ],
+          [
+            t('    '),
+            k('if let'),
+            t(' idx = def.'),
+            fn('index'),
+            t('('),
+            pm('for'),
+            t(': .'),
+            en('head'),
+            t(') {'),
+          ],
+          [
+            t('        '),
+            k('let'),
+            t(' jointT = skeleton.'),
+            pr('jointLocalTransforms'),
+            t('[idx]'),
+          ],
+          [
+            t('        '),
+            k('let'),
+            t(' worldT = body.'),
+            pr('transform'),
+            t(' * jointT'),
+          ],
+          [t('    }')],
+          [t('}')],
         ],
         depthbuf: [
           [cm('// Get the depth buffer from the current frame')],
@@ -4078,168 +4227,6 @@
             pr('scale'),
             t(') '),
             cm('// new scale'),
-          ],
-          [t('    }')],
-          [t('}')],
-        ],
-        anchors: [
-          [cm('// World position — fixed in 3D space')],
-          [
-            tp('AnchorEntity'),
-            t('('),
-            pm('world'),
-            t(': '),
-            tp('simd_float3'),
-            t('('),
-            nm('0'),
-            t(', '),
-            nm('0'),
-            t(', -'),
-            nm('1'),
-            t('))'),
-          ],
-          [],
-          [cm('// Plane detection — auto-places on surfaces')],
-          [
-            tp('AnchorEntity'),
-            t('('),
-            pm('plane'),
-            t(': .'),
-            en('horizontal'),
-            t(')'),
-          ],
-          [
-            tp('AnchorEntity'),
-            t('('),
-            pm('plane'),
-            t(': .'),
-            en('horizontal'),
-            t(', '),
-            pm('classification'),
-            t(': .'),
-            en('floor'),
-            t(')'),
-          ],
-          [
-            tp('AnchorEntity'),
-            t('('),
-            pm('plane'),
-            t(': .'),
-            en('horizontal'),
-            t(', '),
-            pm('classification'),
-            t(': .'),
-            en('table'),
-            t(')'),
-          ],
-          [
-            tp('AnchorEntity'),
-            t('('),
-            pm('plane'),
-            t(': .'),
-            en('vertical'),
-            t(')'),
-          ],
-          [],
-          [cm('// From a raycast result')],
-          [tp('AnchorEntity'), t('('), pm('raycastResult'), t(': result)')],
-          [],
-          [cm('// Camera-relative (follows device)')],
-          [tp('AnchorEntity'), t('(.'), en('camera'), t(')')],
-          [],
-          [cm('// Image tracking')],
-          [tp('AnchorEntity'), t('(.'), en('image'), t('(')],
-          [
-            t('    '),
-            pm('group'),
-            t(': '),
-            st('"AR Resources"'),
-            t(', '),
-            pm('name'),
-            t(': '),
-            st('"poster"'),
-            t('))'),
-          ],
-          [],
-          [cm('// Body tracking')],
-          [tp('AnchorEntity'), t('(.'), en('body'), t(')')],
-          [],
-          [cm('// Requires ARBodyTrackingConfiguration')],
-          [
-            k('let'),
-            t(' bodyConfig = '),
-            tp('ARBodyTrackingConfiguration'),
-            t('()'),
-          ],
-          [t('bodyConfig.'), pr('planeDetection'), t(' = .'), en('horizontal')],
-          [t('arView.'), pr('session'), t('.'), fn('run'), t('(bodyConfig)')],
-          [],
-          [cm('// Access skeleton joints from ARBodyAnchor')],
-          [
-            k('func'),
-            t(' '),
-            fn('session'),
-            t('('),
-            k('_'),
-            t(' s: '),
-            tp('ARSession'),
-            t(', '),
-            pm('didUpdate'),
-            t(' anchors: ['),
-            tp('ARAnchor'),
-            t(']) {'),
-          ],
-          [
-            t('    '),
-            k('guard let'),
-            t(' body = anchors.'),
-            pr('first'),
-            t(' '),
-            k('as'),
-            t('? '),
-            tp('ARBodyAnchor'),
-          ],
-          [t('    '), k('else'), t(' { '), k('return'), t(' }')],
-          [
-            t('    '),
-            k('let'),
-            t(' skeleton = body.'),
-            pr('skeleton'),
-            t(' '),
-            cm('// ARSkeleton3D'),
-          ],
-          [
-            t('    '),
-            k('let'),
-            t(' def = '),
-            tp('ARSkeletonDefinition'),
-            t('.'),
-            pr('defaultBody3D'),
-          ],
-          [
-            t('    '),
-            k('if let'),
-            t(' idx = def.'),
-            fn('index'),
-            t('('),
-            pm('for'),
-            t(': .'),
-            en('head'),
-            t(') {'),
-          ],
-          [
-            t('        '),
-            k('let'),
-            t(' jointT = skeleton.'),
-            pr('jointLocalTransforms'),
-            t('[idx]'),
-          ],
-          [
-            t('        '),
-            k('let'),
-            t(' worldT = body.'),
-            pr('transform'),
-            t(' * jointT'),
           ],
           [t('    }')],
           [t('}')],
